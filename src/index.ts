@@ -23,7 +23,7 @@ app.post("/contact", (req: Request, res: Response) => {
   const { name } = req.body;
   const { id } = req.query;
 
-  res.send({
+  res.status(403).send({
     data: {
       id,
       name,
