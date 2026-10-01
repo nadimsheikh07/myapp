@@ -10,4 +10,4 @@ app.get("/health", (req: Request, res: Response) => {
   res.send("Health is ok");
 });
 
-app.listen(3001);
+app.listen(5172);
