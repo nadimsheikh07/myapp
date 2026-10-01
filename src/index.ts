@@ -6,4 +6,8 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
 
+app.get("/health", (req: Request, res: Response) => {
+  res.send("Health is ok");
+});
+
 app.listen(3001);
