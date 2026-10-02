@@ -1,6 +1,10 @@
+import "dotenv/config";
 import express, { type Express, type Request, type Response } from "express";
 
 const app: Express = express();
+
+const PORT = Number(process.env.PORT) || 5172;
+const NODE_ENV = process.env.NODE_ENV ?? "development";
 
 // ✅ Body parsers — must come BEFORE routes
 app.use(express.json());
@@ -10,26 +14,12 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
 
-app.get("/health/:category/:id", (req: Request, res: Response) => {
-  const { category, id } = req.params;
+app.get("/health", (req: Request, res: Response) => {
   res.send({
-    category: category,
-    id: id,
     message: "Health is ok",
   });
 });
 
-app.post("/contact", (req: Request, res: Response) => {
-  const { name } = req.body;
-  const { id } = req.query;
-
-  res.status(403).send({
-    data: {
-      id,
-      name,
-    },
-    message: "Contact call",
-  });
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT} [${NODE_ENV}]`);
 });
-
-app.listen(5172);
