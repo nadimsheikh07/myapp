@@ -3,13 +3,47 @@ import Blog from "../models/blog.model.ts";
 
 // GET /api/blogs
 export const getBlogs = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const blogs = await Blog.find().sort({ createdAt: -1 }).lean();
-    res.status(200).json({ count: blogs.length, data: blogs });
+    const { author, title, content, page = "1", limit = "10" } = req.query;
+
+    // Build filter object dynamically
+    const filter: Record<string, unknown> = {};
+
+    if (author) {
+      filter.author = { $regex: author as string, $options: "i" };
+    }
+    if (title) {
+      filter.title = { $regex: title as string, $options: "i" };
+    }
+    if (content) {
+      filter.content = { $regex: content as string, $options: "i" };
+    }
+
+    // Pagination
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [blogs, total] = await Promise.all([
+      Blog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Blog.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      count: blogs.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: blogs,
+    });
   } catch (err) {
     next(err);
   }
