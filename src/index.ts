@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express, { type Express, type Request, type Response } from "express";
+import routes from "../routes/index.ts";
+import { errorHandler } from "../middleware/errorHandler.ts";
 
 const app: Express = express();
 
@@ -10,15 +12,9 @@ const NODE_ENV = process.env.NODE_ENV ?? "development";
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req: Request, res: Response) => {
-  res.send("Hello World!");
-});
+app.use("/", routes);
 
-app.get("/health", (req: Request, res: Response) => {
-  res.send({
-    message: "Health is ok",
-  });
-});
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT} [${NODE_ENV}]`);
