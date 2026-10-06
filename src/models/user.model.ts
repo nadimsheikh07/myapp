@@ -6,6 +6,8 @@ import {
   type InferSchemaType,
 } from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import jwt, { type SignOptions } from "jsonwebtoken"; // ✅ from jsonwebtoken
 
 // ---------- Schema ----------
 
@@ -50,6 +52,30 @@ const userSchema = new Schema(
       ],
       select: false,
     },
+    role: {
+      type: String,
+      enum: {
+        values: ["user", "admin"],
+        message: "The role must be either user or admin.",
+      },
+      default: "user",
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -57,6 +83,9 @@ const userSchema = new Schema(
       virtuals: true,
       transform: (_doc, ret) => {
         delete (ret as any).password;
+        delete (ret as any).refreshToken;
+        delete (ret as any).passwordResetToken;
+        delete (ret as any).passwordResetExpires;
         delete (ret as any).__v;
         return ret;
       },
@@ -69,6 +98,13 @@ const userSchema = new Schema(
 
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ mobile: 1 }, { unique: true });
+userSchema.index({ role: 1 });
+
+// ---------- Virtuals ----------
+
+userSchema.virtual("isEmailVerified").get(function () {
+  return this.emailVerifiedAt !== null;
+});
 
 // ---------- Hooks ----------
 
@@ -86,19 +122,60 @@ userSchema.methods.comparePassword = function (
   return bcrypt.compare(candidate, this.password);
 };
 
+userSchema.methods.generateAccessToken = function (): string {
+  const secret = process.env.JWT_SECRET as string;
+  const expiresIn = (process.env.JWT_EXPIRES_IN ??
+    "15m") as SignOptions["expiresIn"];
+
+  return jwt.sign(
+    {
+      sub: this._id.toString(),
+      email: this.email,
+      role: this.role,
+    },
+    secret,
+    { expiresIn },
+  );
+};
+
+userSchema.methods.generateRefreshToken = function (): string {
+  const secret = process.env.JWT_REFRESH_SECRET as string;
+  const expiresIn = (process.env.JWT_REFRESH_EXPIRES_IN ??
+    "7d") as SignOptions["expiresIn"];
+
+  return jwt.sign({ sub: this._id.toString() }, secret, { expiresIn });
+};
+
+userSchema.methods.createPasswordResetToken = function (): string {
+  // Raw token sent to user via email
+  const rawToken = crypto.randomBytes(32).toString("hex");
+
+  // Hashed token stored in DB
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+  // Expires in 15 minutes
+  this.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+  return rawToken;
+};
+
 // ---------- Types ----------
 
 export type User = InferSchemaType<typeof userSchema>;
 
-export type UserDocument = HydratedDocument<User> & {
+export type UserMethods = {
   comparePassword(candidate: string): Promise<boolean>;
+  generateAccessToken(): string;
+  generateRefreshToken(): string;
+  createPasswordResetToken(): string;
 };
 
-export type UserModel = Model<
-  User,
-  {},
-  { comparePassword(candidate: string): Promise<boolean> }
->;
+export type UserDocument = HydratedDocument<User, UserMethods>;
+
+export type UserModel = Model<User, {}, UserMethods>;
 
 // ---------- Model ----------
 

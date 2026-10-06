@@ -3,12 +3,17 @@ import healthRoutes from "./health.routes.ts";
 import { getLiveness } from "../controllers/health.controller.ts";
 import blogRoutes from "./blog.routes.ts";
 import userRoutes from "./user.routes.ts";
+import authRoutes from "./auth.routes.ts";
+import { protect } from "../middleware/auth.middleware.ts";
 
 const router = Router();
 
 router.get("/", getLiveness);
 
 router.use("/health", healthRoutes);
+router.use("/auth", authRoutes);
+
+router.use(protect);
 router.use("/blogs", blogRoutes);
 router.use("/users", userRoutes);
 
