@@ -43,7 +43,12 @@ const userSchema = new Schema(
       type: String,
       required: [true, "The password field is required."],
       minlength: [6, "The password must be at least 6 characters."],
-      select: false, // don't return password by default
+      maxlength: [128, "The password may not be greater than 128 characters."],
+      match: [
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{};:'",.<>\/\\|`~])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{};:'",.<>\/\\|`~]{6,}$/,
+        "The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
+      ],
+      select: false,
     },
   },
   {
